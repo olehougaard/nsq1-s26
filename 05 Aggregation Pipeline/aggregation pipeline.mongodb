@@ -1,105 +1,88 @@
 // All blog texts and number of words by user "the" ordered by number of words descending
-db.blogs.aggregate(
-    [
-        {$match: {"user.username": "the"}},
-        {$project: {text: 1, numberOfWords: 1, _id: 0}},
-        {$sort: {numberOfWords: -1}}
-    ]
-)
+db.blogs.aggregate([
+  {$match: {"user.username": "the"}},
+  {$project: {_id: 0, "text": 1, "numberOfWords": 1}},
+  {$sort: {numberOfWords: -1}}
+])
 
+/*
+db.find({"user.username": "the"}, {_id: 0, "text": 1, "numberOfWords": 1}).sort({numberOfWords: -1})
+*/
 // The average word count by user
 db.blogs.aggregate(
     [
-        {
-            $group: {
-                _id: "$user.username",
-                averageWordCount: {$avg: "$numberOfWords"}
-            }
-        }
+      {$group: {
+        _id: "$user.username",
+        avgWordCount: {$avg: "$numberOfWords"}
+      }}
     ]
 )
 
 // Average word count
 db.blogs.aggregate(
     [
-        {
-            $group: {
-                _id: null,
-                averageWordCount: {$avg: "$numberOfWords"}
-            }
-        },
-        {
-            $project: {_id:0, averageWordCount: 1}
-        }
+      {$group: {
+        _id: 1,
+        avgWordCount: {$avg: "$numberOfWords"}
+      }},
+      {$project: {_id: 0, avgWordCount: 1}}
     ]
 )
 
-// High average word count
+// Users with average word count >= 1000
 db.blogs.aggregate(
     [
-        {
-            $group: {
-                _id: "$user.username",
-                averageWordCount: {$avg: "$numberOfWords"}
-            }
-        },
-        {$match: {"averageWordCount": {$gt: 1000}}}
+      {$group: {
+        _id: "$user.username",
+        avgWordCount: {$avg: "$numberOfWords"}
+      }},
+      {$match: {avgWordCount: {$gte: 1000}}}
     ]
 )
 
 // All comments by user "endless"
 db.blogs.aggregate(
     [
-        {$unwind: "$comments"},
-        {$replaceWith: "$comments"}, // Now we have a collection of comments
-        {$match: {user: "endless"}}
+      {$match: {"comments.user": "endless"}}, // For effeciency - remember to test
+      {$unwind: "$comments"},
+      {$replaceWith: "$comments"},
+      {$match: {user: "endless"}}
     ]
 )
 
 // On which days can a person get their favourite food:
 db.people.aggregate(
     [
-        {$lookup: 
-            {
-                from: "menu",
-                localField: "favoriteFood",
-                foreignField: "food",
-                as: "goodDays"
-            }
-        }
+      {$lookup: {
+        from: "menu",
+        localField: "favoriteFood",
+        foreignField: "food",
+        as: "matchedDays"
+      }}
     ]
 )
 
 // INNER JOIN
 db.people.aggregate(
     [
-        {$lookup: 
-            {
-                from: "menu",
-                localField: "favoriteFood",
-                foreignField: "food",
-                as: "goodDays"
-            }
-        },
-        {$unwind: "$goodDays"}
+      {$lookup: {
+        from: "menu",
+        localField: "favoriteFood",
+        foreignField: "food",
+        as: "matchedDays"
+      }},
+      {$unwind: "$matchedDays"}
     ]
 )
-
 // LEFT JOIN
 db.people.aggregate(
     [
-        {$lookup: 
-            {
-                from: "menu",
-                localField: "favoriteFood",
-                foreignField: "food",
-                as: "goodDays"
-            }
-        },
-        {$unwind: {
-            path: "$goodDays",
-            preserveNullAndEmptyArrays: true
-            }
-        }
+      {$lookup: {
+        from: "menu",
+        localField: "favoriteFood",
+        foreignField: "food",
+        as: "matchedDays"
+      }},
+      {$unwind: {path: "$matchedDays", preserveNullAndEmptyArrays: true}}
     ]
 )
